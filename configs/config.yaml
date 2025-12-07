@@ -15,7 +15,7 @@ model:
   folds: 5                # Крос-валідація
 
 h2o_automl:
-  max_runtime_secs: 1800   # 15 хвилин (жорстке обмеження)
+  max_runtime_secs: 1800   # 30 хвилин (жорстке обмеження)
   max_models: 20          # Додаткове обмеження, щоб не перевантажити RAM
   exclude_algos:          # Опціонально: можна виключити "DeepLearning" без GPU
     - "DeepLearning"      # DL на CPU може бути повільним, краще GBM/XGBoost
