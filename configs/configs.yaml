@@ -1,0 +1,25 @@
+project:
+  name: "h2o_automl_diagnosis"
+  random_state: 42
+  experiment_name: "H2O_AutoML_Baseline"
+
+data:
+  raw_path: "../data/raw/data.csv"
+  processed_path: "../data/processed/"
+  target_col: "diagnosis"
+  id_col: null            # Вкажіть, якщо є ID колонки, яку треба видалити
+
+model:
+  type: "binary_classification"
+  balance_classes: true   # Корисно, бо у вас дизбаланс 3:2
+  folds: 5                # Крос-валідація
+
+h2o_automl:
+  max_runtime_secs: 900   # 15 хвилин (жорстке обмеження)
+  max_models: 20          # Додаткове обмеження, щоб не перевантажити RAM
+  exclude_algos:          # Опціонально: можна виключити "DeepLearning" без GPU
+    - "DeepLearning"      # DL на CPU може бути повільним, краще GBM/XGBoost
+  sort_metric: "AUC"      # Стандарт для бінарної класифікації
+
+mlflow:
+  tracking_uri: "../mlruns"
