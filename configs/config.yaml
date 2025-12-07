@@ -4,8 +4,8 @@ project:
   experiment_name: "H2O_AutoML_Baseline"
 
 data:
-  raw_path: "../data/raw/data.csv"
-  processed_path: "../data/processed/"
+  raw_path: "data/raw/data.csv"
+  processed_path: "data/processed/"
   target_col: "diagnosis"
   id_col: null            # Вкажіть, якщо є ID колонки, яку треба видалити
 
@@ -22,7 +22,7 @@ h2o_automl:
   sort_metric: "AUC"      # Стандарт для бінарної класифікації
 
 mlflow:
-  tracking_uri: "../mlruns"
+  tracking_uri: "mlruns"
 
 split:
   test_size: 0.2
@@ -34,5 +34,5 @@ logistic_regression:
   max_iter: 1000
 
 paths:
-  model_output: "../models/baseline_model.pkl"
-  test_data_output: "../data/processed/test_data.csv"
+  model_output: "models/baseline_model.pkl"
+  test_data_output: "data/processed/test_data.csv"
