@@ -1,6 +1,6 @@
 project:
   name: "h2o_automl_diagnosis"
-  random_state: 42
+  random_state: 45345
   experiment_name: "H2O_AutoML_Baseline"
 
 data:
@@ -23,3 +23,16 @@ h2o_automl:
 
 mlflow:
   tracking_uri: "../mlruns"
+
+split:
+  test_size: 0.2
+  random_state: 45345
+
+logistic_regression:
+  C: 1.0
+  solver: "lbfgs"
+  max_iter: 1000
+
+paths:
+  model_output: "../models/baseline_model.pkl"
+  test_data_output: "../data/processed/test_data.csv"
