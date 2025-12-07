@@ -21,11 +21,18 @@
    ```
    
 ## 📂 3. Підготовка даних
+1. Перетворення даних у csv з заголовками
+    ```python
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    df = pd.read_csv('../data/wdbc.data', sep=',', names = ['id','diagnosis','radius1','texture1','perimeter1','area1', 'smoothness1', 'compactness1', 'concavity1', 'concave_points1', 'symmetry1', 'fractal_dimensions1','radius2','texture2','perimeter2','area2', 'smoothness2', 'compactness2', 'concavity2', 'concave_points2', 'symmetry2', 'fractal_dimensions2','radius3','texture3','perimeter3','area3', 'smoothness3', 'compactness3', 'concavity3', 'concave_points3', 'symmetry3', 'fractal_dimensions3'])
+    df.to_csv("data.csv")
+    ```
 
-1.  Розмістіть ваш вихідний CSV-файл у папку:
+2.  Розмістіть ваш вихідний CSV-файл у папку:
     `data/raw/`
 
-2.  Перевірте `configs/config.yaml`:
+3.  Перевірте `configs/config.yaml`:
 
       - Переконайтеся, що параметр `raw_path` вказує на правильне ім'я файлу (наприклад, `../data/raw/my_dataset.csv`).
       - Вкажіть правильну назву цільової колонки у `target_col`.
