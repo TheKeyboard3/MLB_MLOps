@@ -1,69 +1,78 @@
 import pandas as pd
 import yaml
 import pickle
-import os
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.pipeline import make_pipeline
+import matplotlib.pyplot as plt
+import seaborn as sns
+import mlflow
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+# Налаштування matplotlib для сервера (без GUI)
+plt.switch_backend('Agg')
 
 # 1. Завантаження конфігурації
 with open("configs/config.yaml", "r") as f:
     config = yaml.safe_load(f)
 
-# 2. Підготовка даних
-print("Loading data...")
-df = pd.read_csv(config['data']['raw_path'])
+# Налаштування MLFlow
+mlflow.set_tracking_uri(config['mlflow']['tracking_uri'])
+mlflow.set_experiment(config['project']['experiment_name'])
 
-# Проста обробка: видалення ID (якщо є) та кодування цільової змінної
-if config['data']['id_col'] and config['data']['id_col'] in df.columns:
-    df = df.drop(columns=[config['data']['id_col']])
+def evaluate():
+    print("Starting evaluation...")
 
-target = config['data']['target_col']
-X = df.drop(columns=[target])
-y = df[target]
+    # 2. Завантаження моделі та даних
+    with open(config['paths']['model_output'], 'rb') as f:
+        model = pickle.load(f)
 
-# Якщо цільова змінна текстова (B/M), кодуємо в 0/1
-if y.dtype == 'object':
-    le = LabelEncoder()
-    y = le.fit_transform(y)
+    test_df = pd.read_csv(config['paths']['test_data_output'])
+    target_col = config['data']['target_col']
 
-# 3. Розділення (Train/Test)
-print("Splitting data...")
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=config['split']['test_size'],
-    random_state=config['split']['random_state'],
-    stratify=y # Важливо при дисбалансі
-)
+    X_test = test_df.drop(columns=[target_col])
+    y_test = test_df[target_col]
 
-# 4. Створення пайплайну (Scaling + LogReg)
-# LogisticRegression чутливий до масштабу, тому додаємо StandardScaler
-model = make_pipeline(
-    StandardScaler(),
-    LogisticRegression(
-        C=config['logistic_regression']['C'],
-        solver=config['logistic_regression']['solver'],
-        max_iter=config['logistic_regression']['max_iter'],
-        random_state=config['project']['random_state']
-    )
-)
+    # 3. Передбачення
+    y_pred = model.predict(X_test)
 
-# 5. Тренування
-print("Training Baseline model...")
-model.fit(X_train, y_train)
+    # 4. Обчислення метрик
+    metrics = {
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred, average='macro'),
+        "recall": recall_score(y_test, y_pred, average='macro'),
+        "f1_macro": f1_score(y_test, y_pred, average='macro')
+    }
 
-# 6. Збереження артефактів для етапу evaluate
-os.makedirs(os.path.dirname(config['paths']['model_output']), exist_ok=True)
-os.makedirs(os.path.dirname(config['paths']['test_data_output']), exist_ok=True)
+    print(f"Metrics: {metrics}")
 
-# Зберігаємо модель
-with open(config['paths']['model_output'], 'wb') as f:
-    pickle.dump(model, f)
+    # 5. Логування в MLFlow
+    with mlflow.start_run(run_name="Baseline_LogReg"):
+        # Логуємо параметри (з конфігу)
+        mlflow.log_params(config['logistic_regression'])
+        mlflow.log_param("test_size", config['split']['test_size'])
 
-# Зберігаємо тестовий набір (X + y) для валідації
-test_df = X_test.copy()
-test_df[target] = y_test
-test_df.to_csv(config['paths']['test_data_output'], index=False)
+        # Логуємо метрики
+        mlflow.log_metrics(metrics)
 
-print(f"Training complete. Model saved to {config['paths']['model_output']}")
+        # 6. Матриця змішування (Confusion Matrix)
+        cm = confusion_matrix(y_test, y_pred)
+
+        plt.figure(figsize=(6, 5))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title('Confusion Matrix')
+        plt.ylabel('True Label')
+        plt.xlabel('Predicted Label')
+
+        # Збереження картинки
+        plot_path = "confusion_matrix.png"
+        plt.savefig(plot_path)
+        plt.close()
+
+        # Логування картинки як артефакту
+        mlflow.log_artifact(plot_path)
+
+        # Логування самої моделі (опціонально, sklearn формат)
+        mlflow.sklearn.log_model(model, "model")
+
+        print("Evaluation logged to MLFlow successfully.")
+
+if __name__ == "__main__":
+    evaluate()
