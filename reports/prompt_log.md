@@ -118,10 +118,7 @@ recall = 1
 Бажаєте, я напишу згаданий у тексті скрипт на Python для автоматичної генерації comparison_table.csv з MLflow?
 
 Застосовані зміни:
-- Файли: src/automl_run.py
-- Commit: 6df9d2f8724f068d45f80e4c46012798ac41d124
-- MLflow run id: -
-- Артефакти: h2o_confusion_matrix.png , h2o_roc_curve.png, leaderboard.csv
+-
 
 Метрики (test) до/після:
 -
@@ -201,7 +198,7 @@ AutoML програв Baseline, оскільки передчасно зупин
 Застосовані зміни:
 - Файли: src/automl_run.py
 - Commit: 8996fb8c993a0424f61effb4867b991b0a694032
-- MLflow run id: -
+- MLflow run id: 877168f471284ef39b30ee7c9dac9f12
 - Артефакти: h2o_confusion_matrix.png , h2o_roc_curve.png, leaderboard.csv
 
 Метрики (test) до/після:
