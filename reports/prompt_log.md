@@ -857,3 +857,86 @@ reports/
 ### Наступний крок
 
 Бажаєте, я напишу **короткий скрипт на Python**, який автоматично витягне результати з `mlruns`, згенерує `comparison_table.csv` і збереже його в папку `reports/`, щоб не робити це вручну?
+
+
+Запит:
+Baseline досяг f1 = 0.972 на тестовому наборі
+Запропонуй невелику зміну до baseline для покращення f1 на тестовому наборі.
+Формат:
+1) зміни до train.
+2) зміни до test (якщо потрібно).
+3) коротке пояснення
+
+Відповідь:
+Оскільки F1 = 0.972 — це вже дуже високий результат, просте "вгадування" параметрів навряд чи допоможе. Найкращий спосіб витиснути останні частки відсотків без зміни алгоритму — це **автоматичний підбір гіперпараметрів (Grid Search)**, зокрема сили регуляризації (`C`) та балансування ваг класів.
+
+Ми змінимо жорстко задані параметри на пошук найкращої комбінації.
+
+### 1\. Зміни до `src/train.py`
+
+Замініть блок створення та тренування моделі на цей код. Ми додаємо `GridSearchCV` для пошуку оптимального `C` та вмикаємо `class_weight`.
+
+```python
+# ... (імпорти ті самі, додаємо GridSearchCV)
+from sklearn.model_selection import GridSearchCV
+
+# ... (завантаження та спліт даних ті самі)
+
+# 4. Створення пайплайну та сітки параметрів
+pipeline = make_pipeline(
+    StandardScaler(),
+    LogisticRegression(
+        solver='liblinear', # liblinear добре працює на малих датасетах
+        random_state=config['project']['random_state'],
+        max_iter=2000
+    )
+)
+
+# Сітка параметрів для перебору
+# logisticregression__C: керує силою регуляризації (менше значення = сильніша регуляризація)
+# class_weight: 'balanced' автоматично підніме вагу меншого класу, що критично для F1
+param_grid = {
+    'logisticregression__C': [0.1, 1.0, 5.0, 10.0, 50.0],
+    'logisticregression__penalty': ['l1', 'l2'], # Спробуємо L1 (Lasso) та L2 (Ridge)
+    'logisticregression__class_weight': [None, 'balanced']
+}
+
+# 5. Тренування з крос-валідацією
+print("Tuning hyperparameters with GridSearchCV...")
+grid_search = GridSearchCV(
+    pipeline, 
+    param_grid, 
+    cv=5, 
+    scoring='f1_macro', # Явно оптимізуємо ту метрику, яка вам потрібна
+    n_jobs=-1,
+    verbose=1
+)
+
+grid_search.fit(X_train, y_train)
+
+print(f"Best parameters found: {grid_search.best_params_}")
+print(f"Best CV F1 Score: {grid_search.best_score_:.4f}")
+
+# 6. Збереження найкращої моделі
+# Ми зберігаємо best_estimator_, щоб evaluate.py працював без змін
+best_model = grid_search.best_estimator_
+
+os.makedirs(os.path.dirname(config['paths']['model_output']), exist_ok=True)
+with open(config['paths']['model_output'], 'wb') as f:
+    pickle.dump(best_model, f)
+
+# ... (код збереження test_data залишається без змін)
+```
+
+### 2\. Зміни до `src/evaluate.py`
+
+**Змін не потребує.**
+Оскільки в `train.py` ми зберегли `grid_search.best_estimator_` (вже тренований пайплайн із найкращими параметрами), скрипт оцінки просто завантажить цю "покращену" версію і порахує метрики як зазвичай.
+
+### 3\. Пояснення змін
+
+1.  **Регуляризація (`C` та `penalty`):** Стандартне `C=1.0` може бути неоптимальним. Якщо дані дуже добре розділяються (F1 \~0.97), модель може бути трохи перенавчена ("overconfident"). Зміна `C` або типу штрафу (`l1` vs `l2`) може згладити границі рішень і покращити узагальнення на тесті.
+2.  **`class_weight='balanced'`:** Це ключова зміна для метрики F1 при дисбалансі. Це змушує модель сильніше штрафувати за помилки на меншому класі ("хворих"), що зазвичай піднімає **Recall**, а отже і **F1-Macro**.
+3.  **Оптимізація цілі (`scoring='f1_macro'`):** Раніше LogReg оптимізувала *LogLoss/Accuracy*. Тепер GridSearch вибере саме ту комбінацію параметрів, яка дає найвищий *F1*, навіть якщо Accuracy при цьому трохи впаде.
+
+Запит:

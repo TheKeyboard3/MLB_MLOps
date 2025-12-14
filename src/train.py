@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 
 # 1. Завантаження конфігурації
 with open("configs/config.yaml", "r") as f:
@@ -39,27 +40,51 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # 4. Створення пайплайну (Scaling + LogReg)
 # LogisticRegression чутливий до масштабу, тому додаємо StandardScaler
-model = make_pipeline(
+pipeline = make_pipeline(
     StandardScaler(),
     LogisticRegression(
-        C=config['logistic_regression']['C'],
-        solver=config['logistic_regression']['solver'],
-        max_iter=config['logistic_regression']['max_iter'],
-        random_state=config['project']['random_state']
+        solver='liblinear', # liblinear добре працює на малих датасетах
+        random_state=config['project']['random_state'],
+        max_iter=2000
     )
 )
 
-# 5. Тренування
-print("Training Baseline model...")
-model.fit(X_train, y_train)
+# Сітка параметрів для перебору
+# logisticregression__C: керує силою регуляризації (менше значення = сильніша регуляризація)
+# class_weight: 'balanced' автоматично підніме вагу меншого класу, що критично для F1
+param_grid = {
+    'logisticregression__C': [0.1, 1.0, 5.0, 10.0, 50.0],
+    'logisticregression__penalty': ['l1', 'l2'], # Спробуємо L1 (Lasso) та L2 (Ridge)
+    'logisticregression__class_weight': [None, 'balanced']
+}
+
+# 5. Тренування з крос-валідацією
+print("Tuning hyperparameters with GridSearchCV...")
+grid_search = GridSearchCV(
+    pipeline,
+    param_grid,
+    cv=5,
+    scoring='f1_macro', # Явно оптимізуємо ту метрику, яка вам потрібна
+    n_jobs=-1,
+    verbose=1
+)
+
+grid_search.fit(X_train, y_train)
+
+print(f"Best parameters found: {grid_search.best_params_}")
+print(f"Best CV F1 Score: {grid_search.best_score_:.4f}")
 
 # 6. Збереження артефактів для етапу evaluate
 os.makedirs(os.path.dirname(config['paths']['model_output']), exist_ok=True)
 os.makedirs(os.path.dirname(config['paths']['test_data_output']), exist_ok=True)
 
-# Зберігаємо модель
+# 7. Збереження найкращої моделі
+# Ми зберігаємо best_estimator_, щоб evaluate.py працював без змін
+best_model = grid_search.best_estimator_
+
+os.makedirs(os.path.dirname(config['paths']['model_output']), exist_ok=True)
 with open(config['paths']['model_output'], 'wb') as f:
-    pickle.dump(model, f)
+    pickle.dump(best_model, f)
 
 # Зберігаємо тестовий набір (X + y) для валідації
 test_df = X_test.copy()
