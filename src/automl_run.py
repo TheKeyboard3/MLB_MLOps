@@ -61,15 +61,25 @@ def run_automl():
 
         # 4. Налаштування та запуск AutoML
         print(f"Starting AutoML for {cfg['h2o_automl']['max_runtime_secs']} seconds...")
+        print("Note: max_models set to Unlimited to utilize full runtime.")
 
         aml = H2OAutoML(
-            max_runtime_secs=cfg['h2o_automl']['max_runtime_secs'],
-            max_models=cfg['h2o_automl']['max_models'],
+            max_runtime_secs=cfg['h2o_automl']['max_runtime_secs'], # 900 сек (15 хв)
+
+            # ЗМІНА 1: Знімаємо обмеження на кількість моделей.
+            # Тепер H2O буде створювати моделі, поки не закінчиться час (15 хв).
+            max_models=None,
+
             seed=cfg['project']['random_state'],
             sort_metric=cfg['h2o_automl']['sort_metric'],
             exclude_algos=cfg['h2o_automl'].get('exclude_algos', []),
             balance_classes=cfg['model']['balance_classes'],
-            project_name=cfg['project']['name']
+            project_name=cfg['project']['name'],
+
+            # ЗМІНА 2: Вимикаємо ранню зупинку (Early Stopping),
+            # щоб H2O не зупинився, якщо метрика перестане покращуватися протягом 3-х моделей.
+            # Ми хочемо, щоб він шукав складні комбінації до останньої секунди.
+            stopping_rounds=0
         )
 
         aml.train(x=x, y=y, training_frame=train)
