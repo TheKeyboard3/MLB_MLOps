@@ -205,13 +205,6 @@ AutoML програв Baseline, оскільки передчасно зупин
 - Артефакти: h2o_confusion_matrix.png , h2o_roc_curve.png, leaderboard.csv
 
 Метрики (test) до/після:
-accuracy = 0.982
-auc = 0.994
-f1 = 0.978
-logloss = 0.098
-precision = 1
-recall = 1
-
 accuracy = 0.982 ⟶ 0.991
 auc = 0.994 ⟶ 0.998
 f1 = 0.978 ⟶ 0.989
