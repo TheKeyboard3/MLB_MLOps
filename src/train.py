@@ -43,9 +43,9 @@ X_train, X_test, y_train, y_test = train_test_split(
 pipeline = make_pipeline(
     StandardScaler(),
     LogisticRegression(
-        solver='liblinear', # liblinear добре працює на малих датасетах
+        solver='liblinear',
         random_state=config['project']['random_state'],
-        max_iter=2000
+        max_iter=3000 # Збільшимо ітерації для впевненості у збіжності при малих C
     )
 )
 
@@ -53,9 +53,15 @@ pipeline = make_pipeline(
 # logisticregression__C: керує силою регуляризації (менше значення = сильніша регуляризація)
 # class_weight: 'balanced' автоматично підніме вагу меншого класу, що критично для F1
 param_grid = {
-    'logisticregression__C': [0.1, 1.0, 5.0, 10.0, 50.0],
-    'logisticregression__penalty': ['l1', 'l2'], # Спробуємо L1 (Lasso) та L2 (Ridge)
-    'logisticregression__class_weight': [None, 'balanced']
+    # Досліджуємо значення менше 0.1, та робимо менший крок навколо 0.1
+    'logisticregression__C': [0.01, 0.03, 0.05, 0.08, 0.1, 0.12, 0.15, 0.2, 0.5],
+
+    # Оскільки 'None' переміг 'balanced', залишаємо лише None, щоб не витрачати час,
+    # або додаємо словник ваг вручну, якщо хочемо тонкого налаштування (наприклад, {0:1, 1:1.2})
+    'logisticregression__class_weight': [None],
+
+    # Перевіримо L2 (переможець) та L1 (може бути кращим при дуже сильному C < 0.05)
+    'logisticregression__penalty': ['l2', 'l1']
 }
 
 # 5. Тренування з крос-валідацією
