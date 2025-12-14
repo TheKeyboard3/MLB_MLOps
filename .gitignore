@@ -42,3 +42,6 @@ data/processed/*
 mlruns/
 h2o_models/
 *.zip
+
+# NixOS
+shell.nix
